@@ -1,0 +1,37 @@
+#version 130
+#extension GL_EXT_gpu_shader4 : enable
+precision highp float;
+
+#define EPSILON 0.002
+
+in vec2 screenPos;
+
+
+uniform sampler2D scrbuffer;
+uniform sampler2D depthfbo;
+
+out vec4 fragColor;
+
+
+
+void main(void) {
+	vec4 fboclr = texture(depthfbo, screenPos*0.5 + 0.5);
+	
+	if (fboclr.w < 0.5) discard; // should really do early Z culling instead
+
+	Ray ray;
+	ray.dir = normalize(color.xyz);
+	ray.pos = startpos;	// relative to chk(000), always positive
+	
+	float depth;
+	vec4 res;
+	if (voxel(ivec3( floor(ray.pos) ) + (NUM/2)*CHUNK ) == 9U) // water
+		res = mix( vec4(0, 0, 1, 1), refraction_ray(ray, 64), 0.33);
+	else {
+		float depth = sqrt(fboclr.x);
+		ray.pos += (depth - EPSILON)*ray.dir;
+		res = trace_ray(ray, 2);
+	}
+
+	fragColor = vec4(res.xyz, depth);
+}
